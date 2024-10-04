@@ -21,8 +21,9 @@ import {
   Settings, BookmarkIcon, RefreshCw, Copy, Trash2, X,
   Baby, Glasses, GraduationCap, Bike
 } from "lucide-react"
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog"
-import { HistoryDialog } from "@/components/ui/HistoryDialog"
+import { Github, Menu, History } from 'lucide-react'
+import Image from 'next/image'
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/SavedDialog"
 
 const GROQ_API_URL = "https://api.groq.com/openai/v1/chat/completions"
 
@@ -34,11 +35,12 @@ export default function CaptionGeneratorComponent() {
   const [generateHashtags, setGenerateHashtags] = useState(false)
   const [generatedCaption, setGeneratedCaption] = useState("")
   const [savedCaptions, setSavedCaptions] = useState<string[]>([])
-  const [isDialogOpen, setIsDialogOpen] = useState(false)
-  const [activePopup, setActivePopup] = useState<{ action: string } | null>(null);
   const [captionHistory, setCaptionHistory] = useState<string[]>([])
-  const [isHistoryDialogOpen, setIsHistoryDialogOpen] = useState(false)
   const [isLoading, setIsLoading] = useState(false)
+  const [activePopup, setActivePopup] = useState<{ action: string } | null>(null);
+  const [isMenuOpen, setIsMenuOpen] = useState(false)
+  const [isSavedDialogOpen, setIsSavedDialogOpen] = useState(false)
+  const [isHistoryDialogOpen, setIsHistoryDialogOpen] = useState(false)
 
   const isFormComplete = () => {
     return contentDescription && tone && targetAudience && platform
@@ -56,6 +58,8 @@ export default function CaptionGeneratorComponent() {
         The image description is: "${contentDescription}".
         Remember, it's not always necessary to include everything from the description.
         Focus on creating an engaging caption that matches the tone and appeals to the target audience.
+        Don't explain what type of caption you just provided, don't explain yourself.
+        Just provide the best caption. If you don't understand "${contentDescription}" then just provide caption according to other inputs.
         ${hashtagInstruction}
         The caption should be concise, ideally within 1-2 sentences${generateHashtags ? ', followed by hashtags' : ''}.`
 
@@ -91,8 +95,12 @@ export default function CaptionGeneratorComponent() {
 
         const data = await response.json();
         const newCaption = data.choices[0]?.message?.content?.trim() || "";
-        setGeneratedCaption(newCaption)
-        setCaptionHistory(prevHistory => [newCaption, ...prevHistory])
+        
+        // If hashtags were not requested, remove any that might have been generated
+        const finalCaption = generateHashtags ? newCaption : newCaption.replace(/#\w+/g, '').trim();
+        
+        setGeneratedCaption(finalCaption)
+        setCaptionHistory(prevHistory => [finalCaption, ...prevHistory])
       } catch (error) {
         console.error('Error generating caption:', error)
         if (error instanceof Error) {
@@ -120,101 +128,134 @@ export default function CaptionGeneratorComponent() {
     navigator.clipboard.writeText(caption)
   }
 
-  const closeDialog = () => setIsDialogOpen(false)
-
   const handleAction = (action: string, callback: () => void) => {
     setActivePopup({ action });
     callback();
     setTimeout(() => setActivePopup(null), 1000); // Reset after 1 second
   };
 
-  const deleteHistoryCaption = (index: number) => {
-    setCaptionHistory(prevHistory => prevHistory.filter((_, i) => i !== index))
+  // Consolidated handleCopy function
+  const handleCopy = (caption: string) => {
+    navigator.clipboard.writeText(caption)
+    setActivePopup({ action: 'Copied!' });
+    setTimeout(() => setActivePopup(null), 1000);
+    // Optionally, show a toast or some feedback that the caption was copied
+  }
+
+  const handleDelete = (index: number) => {
+    setSavedCaptions(prev => prev.filter((_, i) => i !== index))
+    setActivePopup({ action: 'Deleted!' });
+    setTimeout(() => setActivePopup(null), 1000);
+    // Optionally, show a toast or some feedback that the caption was deleted
+  }
+
+  const handleDeleteFromHistory = (index: number) => {
+    setCaptionHistory(prev => prev.filter((_, i) => i !== index))
+    setActivePopup({ action: 'Removed from history!' });
+    setTimeout(() => setActivePopup(null), 1000);
+    // Optionally, show a toast or some feedback that the caption was deleted from history
   }
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-purple-100 to-indigo-200">
       <header className="bg-purple-600 text-white p-4 shadow-md">
-        <div className="container mx-auto flex justify-between items-center">
-          <h1 className="text-2xl font-bold">Caption Wizard</h1>
-          <nav className="flex space-x-4">
-            <HistoryDialog
-              isOpen={isHistoryDialogOpen}
-              onOpenChange={setIsHistoryDialogOpen}
-              captionHistory={captionHistory}
-              onCopy={copyCaption}
-              onDelete={deleteHistoryCaption}
-            />
-            <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
-              <DialogTrigger asChild>
-                <Button variant="ghost" className="hover:bg-purple-700" onClick={() => setIsDialogOpen(true)}>
-                  <BookmarkIcon className="mr-2 h-4 w-4" />
-                  Saved
-                </Button>
-              </DialogTrigger>
-              <DialogContent className="sm:max-w-[425px] max-h-[80vh] flex flex-col">
-                <DialogHeader className="flex-shrink-0">
-                  <DialogTitle>Saved Captions</DialogTitle>
-                  <Button variant="ghost" size="icon" className="absolute right-4 top-4" onClick={closeDialog}>
-                    <X className="h-4 w-4" />
-                  </Button>
-                </DialogHeader>
-                <div className="mt-4 space-y-4 overflow-y-auto flex-grow">
-                  {savedCaptions.length > 0 ? (
-                    savedCaptions.map((caption, index) => (
-                      <div key={index} className="bg-purple-50 p-4 rounded-lg relative">
-                        <p className="text-purple-900 mb-2">{caption}</p>
-                        <div className="flex justify-end space-x-2">
-                          <div className="relative">
-                            <Button 
-                              variant="outline" 
-                              size="sm" 
-                              onClick={() => handleAction('Copied!', () => copyCaption(caption))}
-                              className="text-purple-600 border-purple-300 hover:bg-purple-100"
-                            >
-                              <Copy className="h-4 w-4 mr-1" /> Copy
-                            </Button>
-                            {activePopup?.action === 'Copied!' && (
-                              <span className="absolute -top-8 left-1/2 transform -translate-x-1/2 bg-black text-white px-2 py-1 rounded text-xs animate-fade-up">
-                                Copied!
-                              </span>
-                            )}
-                          </div>
-                          <div className="relative">
-                            <Button 
-                              variant="outline" 
-                              size="sm" 
-                              onClick={() => handleAction('Deleted!', () => deleteCaption(index))}
-                              className="text-red-600 border-red-300 hover:bg-red-100"
-                            >
-                              <Trash2 className="h-4 w-4 mr-1" /> Delete
-                            </Button>
-                            {activePopup?.action === 'Deleted!' && (
-                              <span className="absolute -top-8 left-1/2 transform -translate-x-1/2 bg-black text-white px-2 py-1 rounded text-xs animate-fade-up">
-                                Deleted!
-                              </span>
-                            )}
-                          </div>
-                        </div>
-                      </div>
-                    ))
-                  ) : (
-                    <p className="text-purple-600">No saved captions yet.</p>
-                  )}
-                </div>
-              </DialogContent>
-            </Dialog>
-            <Button variant="ghost" className="hover:bg-purple-700">
-              <Settings className="mr-2 h-4 w-4" />
-              Settings
-            </Button>
-          </nav>
+        <div className="container mx-auto">
+          <div className="flex justify-between items-center">
+            <div className="flex items-center">
+              <Image
+                src="/images/logo.png"
+                alt="Caption Wizard Logo"
+                width={40}
+                height={40}
+                className="mr-2"
+              />
+              <span className="text-xl font-bold">Caption Wizard</span>
+            </div>
+            
+            {/* Desktop menu */}
+            <div className="hidden md:flex items-center space-x-4">
+              <Button 
+                variant="ghost" 
+                className="hover:bg-purple-700 flex items-center"
+                onClick={() => setIsHistoryDialogOpen(true)}
+              >
+                <History className="h-4 w-4 mr-2" />
+                History
+              </Button>
+              <Button 
+                variant="ghost" 
+                className="hover:bg-purple-700 flex items-center"
+                onClick={() => setIsSavedDialogOpen(true)}
+              >
+                <BookmarkIcon className="h-4 w-4 mr-2" />
+                Saved
+              </Button>
+              <Button 
+                variant="ghost" 
+                className="hover:bg-purple-700 flex items-center"
+              >
+                <Settings className="h-4 w-4 mr-2" />
+                Settings
+              </Button>
+            </div>
+
+            {/* Mobile menu button */}
+            <div className="md:hidden">
+              <Button
+                variant="ghost"
+                className="hover:bg-purple-700"
+                onClick={() => setIsMenuOpen(!isMenuOpen)}
+              >
+                <Menu className="h-6 w-6" />
+              </Button>
+            </div>
+          </div>
+
+          {/* Mobile menu */}
+          {isMenuOpen && (
+            <div className="mt-4 md:hidden">
+              <Button 
+                variant="ghost" 
+                className="w-full text-left hover:bg-purple-700 mb-2 flex items-center"
+                onClick={() => {
+                  setIsHistoryDialogOpen(true)
+                  setIsMenuOpen(false)
+                }}
+              >
+                <History className="h-4 w-4 mr-2" />
+                History
+              </Button>
+              <Button 
+                variant="ghost" 
+                className="w-full text-left hover:bg-purple-700 mb-2 flex items-center"
+                onClick={() => {
+                  setIsSavedDialogOpen(true)
+                  setIsMenuOpen(false)
+                }}
+              >
+                <BookmarkIcon className="h-4 w-4 mr-2" />
+                Saved
+              </Button>
+              <Button 
+                variant="ghost" 
+                className="w-full text-left hover:bg-purple-700 flex items-center"
+              >
+                <Settings className="h-4 w-4 mr-2" />
+                Settings
+              </Button>
+            </div>
+          )}
         </div>
       </header>
 
-      
+      {/* Updated header below the nav bar */}
+      <div className="text-center mt-8 mb-6">
+        <h1 className="text-4xl font-bold text-purple-800 tracking-wide">
+          Caption Wizard
+        </h1>
+      </div>
 
-      <main className="container mx-auto mt-12 p-4">
+      <main className="container mx-auto px-4">
         <Card className="max-w-2xl mx-auto">
           <CardContent className="p-6">
             <form onSubmit={(e) => { e.preventDefault(); generateCaption(); }}>
@@ -458,6 +499,95 @@ export default function CaptionGeneratorComponent() {
           </Card>
         )}
       </main>
+
+      {/* Updated trademark popup with GitHub icon and link */}
+      <div className="fixed bottom-4 right-4 bg-purple-600 text-white px-3 py-1 rounded-full text-sm shadow-md">
+        <a href="https://github.com/ItsBibek" target="_blank" rel="noopener noreferrer" className="flex items-center space-x-2 text-white hover:text-purple-200">
+          <Github className="h-4 w-4" />
+          <span>Made By Bibek</span>
+        </a>
+      </div>
+
+      <Dialog open={isSavedDialogOpen} onOpenChange={setIsSavedDialogOpen}>
+        <DialogContent className="max-w-2xl">
+          <DialogHeader>
+            <DialogTitle>Saved Captions</DialogTitle>
+            <DialogDescription>
+              Here are your saved captions:
+            </DialogDescription>
+          </DialogHeader>
+          <div className="mt-4 space-y-4 max-h-[60vh] overflow-y-auto">
+            {savedCaptions.length > 0 ? (
+              savedCaptions.map((caption, index) => (
+                <div key={index} className="bg-purple-50 p-4 rounded-lg">
+                  <p className="text-purple-900 mb-4">{caption}</p>
+                  <div className="flex justify-end space-x-2">
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => handleCopy(caption)}
+                      className="text-purple-600 hover:bg-purple-100"
+                    >
+                      <Copy className="h-4 w-4 mr-1" /> Copy
+                    </Button>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => handleDelete(index)}
+                      className="text-red-600 hover:bg-red-100"
+                    >
+                      <Trash2 className="h-4 w-4 mr-1" /> Delete
+                    </Button>
+                  </div>
+                </div>
+              ))
+            ) : (
+              <p>No saved captions yet.</p>
+            )}
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* History Dialog */}
+      <Dialog open={isHistoryDialogOpen} onOpenChange={setIsHistoryDialogOpen}>
+        <DialogContent className="max-w-2xl">
+          <DialogHeader>
+            <DialogTitle>Caption History</DialogTitle>
+            <DialogDescription>
+              Here are your previously generated captions:
+            </DialogDescription>
+          </DialogHeader>
+          <div className="mt-4 space-y-4 max-h-[60vh] overflow-y-auto">
+            {captionHistory.length > 0 ? (
+              captionHistory.map((caption, index) => (
+                <div key={index} className="bg-purple-50 p-4 rounded-lg">
+                  <p className="text-purple-900 mb-4">{caption}</p>
+                  <div className="flex justify-end space-x-2">
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => handleCopy(caption)}
+                      className="text-purple-600 hover:bg-purple-100"
+                    >
+                      <Copy className="h-4 w-4 mr-1" /> Copy
+                    </Button>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => handleDeleteFromHistory(index)}
+                      className="text-red-600 hover:bg-red-100"
+                    >
+                      <Trash2 className="h-4 w-4 mr-1" /> Remove
+                    </Button>
+                  </div>
+                </div>
+              ))
+            ) : (
+              <p>No caption history yet.</p>
+            )}
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   )
 }
