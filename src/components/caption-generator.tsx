@@ -17,8 +17,8 @@ import {
 import { 
   Instagram, Twitter, Linkedin, Facebook, Youtube,
   Zap, Laugh, Lightbulb, AlertCircle, Coffee, Briefcase, MessageSquare, Heart,
-  Users, UserPlus, UserCheck, User,
-  Settings, BookmarkIcon, RefreshCw, Copy, Trash2, X,
+  Users, UserPlus, UserCheck,
+  Settings, BookmarkIcon, RefreshCw, Copy, Trash2,
   Baby, Glasses, GraduationCap, Bike
 } from "lucide-react"
 import { Github, Menu, History } from 'lucide-react'
@@ -118,10 +118,6 @@ export default function CaptionGeneratorComponent() {
     if (generatedCaption && !savedCaptions.includes(generatedCaption)) {
       setSavedCaptions(prevCaptions => [...prevCaptions, generatedCaption])
     }
-  }
-
-  const deleteCaption = (index: number) => {
-    setSavedCaptions(prevCaptions => prevCaptions.filter((_, i) => i !== index))
   }
 
   const copyCaption = (caption: string) => {
