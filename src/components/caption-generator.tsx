@@ -17,7 +17,7 @@ import {
 import { 
   Instagram, Twitter, Linkedin, Facebook, Youtube,
   Zap, Laugh, Lightbulb, AlertCircle, Coffee, Briefcase, MessageSquare, Heart,
-  Users, UserPlus, UserCheck,
+  Users, UserPlus,
   Settings, BookmarkIcon, RefreshCw, Copy, Trash2,
   Baby, Glasses, GraduationCap, Bike
 } from "lucide-react"
