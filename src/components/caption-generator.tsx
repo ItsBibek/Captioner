@@ -212,6 +212,8 @@ export default function CaptionGeneratorComponent() {
         </div>
       </header>
 
+      
+
       <main className="container mx-auto mt-12 p-4">
         <Card className="max-w-2xl mx-auto">
           <CardContent className="p-6">
