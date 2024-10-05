@@ -24,6 +24,7 @@ import {
 import { Github, Menu, History } from 'lucide-react'
 import Image from 'next/image'
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/SavedDialog"
+import { UserButton, SignInButton, useUser } from "@clerk/nextjs"
 
 const GROQ_API_URL = "https://api.groq.com/openai/v1/chat/completions"
 
@@ -41,6 +42,7 @@ export default function CaptionGeneratorComponent() {
   const [isMenuOpen, setIsMenuOpen] = useState(false)
   const [isSavedDialogOpen, setIsSavedDialogOpen] = useState(false)
   const [isHistoryDialogOpen, setIsHistoryDialogOpen] = useState(false)
+  const { isSignedIn, user } = useUser()
 
   const isFormComplete = () => {
     return contentDescription && tone && targetAudience && platform
@@ -186,13 +188,15 @@ export default function CaptionGeneratorComponent() {
                 <BookmarkIcon className="h-4 w-4 mr-2" />
                 Saved
               </Button>
-              <Button 
-                variant="ghost" 
-                className="hover:bg-purple-700 flex items-center"
-              >
-                <Settings className="h-4 w-4 mr-2" />
-                Settings
-              </Button>
+              {isSignedIn ? (
+                <UserButton afterSignOutUrl="/" />
+              ) : (
+                <SignInButton mode="modal">
+                  <Button variant="ghost" className="hover:bg-purple-700">
+                    Sign In
+                  </Button>
+                </SignInButton>
+              )}
             </div>
 
             {/* Mobile menu button */}
@@ -232,13 +236,17 @@ export default function CaptionGeneratorComponent() {
                 <BookmarkIcon className="h-4 w-4 mr-2" />
                 Saved
               </Button>
-              <Button 
-                variant="ghost" 
-                className="w-full text-left hover:bg-purple-700 flex items-center"
-              >
-                <Settings className="h-4 w-4 mr-2" />
-                Settings
-              </Button>
+              {isSignedIn ? (
+                <div className="mt-2">
+                  <UserButton afterSignOutUrl="/" />
+                </div>
+              ) : (
+                <SignInButton mode="modal">
+                  <Button variant="ghost" className="w-full text-left hover:bg-purple-700 mb-2">
+                    Sign In
+                  </Button>
+                </SignInButton>
+              )}
             </div>
           )}
         </div>
