@@ -44,6 +44,8 @@ export default function CaptionGeneratorComponent() {
   const [isHistoryDialogOpen, setIsHistoryDialogOpen] = useState(false)
   const { isSignedIn, user } = useUser()
 
+  
+
   const isFormComplete = () => {
     return contentDescription && tone && targetAudience && platform
   }
